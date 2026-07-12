@@ -1,0 +1,28 @@
+combos:
+  - id: COMBO-01
+    description_zh: 草地 touching 非草地 → 花開草地
+    condition:
+      type: meadow_touching_other
+      source: meadow
+      result: blooming_meadow
+
+  - id: COMBO-02
+    description_zh: 3×3 岩石/山脈 → 山峰
+    condition:
+      type: rock_mountain_3x3
+      tiles: [rock, mountain]
+      result: mountain_peak
+
+  - id: COMBO-03
+    description_zh: 寶庫八格 adjacent 全滿 → 空寶庫
+    condition:
+      type: treasury_surrounded
+      source: treasury
+      result: empty_treasury
+
+  - id: COMBO-04
+    description_zh: 村莊 ≥ 2 → 強盜營地
+    condition:
+      type: village_count
+      min_count: 2
+      result: bandit_camp

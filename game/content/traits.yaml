@@ -1,0 +1,40 @@
+traits:
+  - id: shield_master
+    name_zh: 盾精通
+    description_zh: 10% 機率受擊暈眩攻擊者
+    effect_id: shield_master
+
+  - id: skilled_armorer
+    name_zh: 熟練鑄甲
+    description_zh: 每完成 1 loop，DEF +1
+    effect_id: skilled_armorer
+
+  - id: blade_of_dawn
+    name_zh: 破曉之刃
+    description_zh: 每天開始時，下次攻擊 ×2 傷害
+    effect_id: blade_of_dawn
+
+  - id: somersault
+    name_zh: 翻滾反擊
+    description_zh: 閃避成功時 35% 機率立即反擊
+    effect_id: somersault
+
+  - id: survivalist
+    name_zh: 生存專家
+    description_zh: HP 低於 30% 時，EVA +15%
+    effect_id: survivalist
+
+  - id: lethal_weakness
+    name_zh: 致命弱點
+    description_zh: 每損失 10% Max HP，0.5% 機率造成 1000% 傷害
+    effect_id: lethal_weakness
+
+  - id: blind_rage
+    name_zh: 盲怒
+    description_zh: HP 低於 20% 時，每場戰鬥一次四連擊
+    effect_id: blind_rage
+
+  - id: lightning_fast
+    name_zh: 雷電快攻
+    description_zh: 20% 機率三連擊（每擊 50% 傷害）
+    effect_id: lightning_fast
