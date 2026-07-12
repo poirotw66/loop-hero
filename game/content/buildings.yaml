@@ -1,0 +1,42 @@
+buildings:
+  - id: campfire
+    name_zh: 營火
+    default_built: true
+    passive:
+      camp_heal_percent: 0.2
+
+  - id: smithy
+    name_zh: 鍛造鋪
+    cost:
+      bone_dust: 15
+      metal: 5
+    unlocks_card: forest
+    passive:
+      equipment_bonus_percent: 0.05
+
+  - id: herbalist_hut
+    name_zh: 草藥棚
+    cost:
+      herb: 10
+      bone_dust: 10
+    unlocks_card: swamp
+    passive:
+      first_heal_bonus: 3
+
+  - id: gymnasium
+    name_zh: 訓練場
+    cost:
+      hide: 12
+      bone_dust: 8
+    unlocks_card: village
+    passive:
+      start_hp_bonus: 10
+
+  - id: supply_depot
+    name_zh: 補給站
+    cost:
+      metal: 8
+      hide: 10
+    unlocks_card: treasury
+    passive:
+      inventory_bonus: 2

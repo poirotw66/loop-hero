@@ -1,0 +1,166 @@
+cards:
+  - id: wasteland
+    name_zh: 荒原
+    card_type: road
+    default_unlocked: true
+    effects:
+      daily_spawn:
+        enemy: slime
+        chance: 0.05
+
+  - id: cemetery
+    name_zh: 墓地
+    card_type: road
+    default_unlocked: true
+    effects:
+      spawn_every_days:
+        enemy: skeleton
+        interval: 3
+        max_per_tile: 1
+
+  - id: grove
+    name_zh: 樹林
+    card_type: road
+    default_unlocked: true
+    effects:
+      spawn_every_days:
+        enemy: wolf
+        interval: 2
+        max_per_tile: 1
+
+  - id: swamp
+    name_zh: 沼澤
+    card_type: road
+    unlock_building: herbalist_hut
+    effects:
+      spawn_every_days:
+        enemy: mosquito
+        interval: 3
+        max_per_tile: 2
+      invert_healing: true
+
+  - id: village
+    name_zh: 村莊
+    card_type: road
+    unlock_building: gymnasium
+    effects:
+      heal_on_pass:
+        base: 15
+        per_loop: 5
+
+  - id: spider_cocoon
+    name_zh: 蜘蛛巢
+    card_type: roadside
+    default_unlocked: true
+    effects:
+      adjacent_road_daily_spawn:
+        enemy: spider
+        max_per_tile: 2
+
+  - id: vampire_mansion
+    name_zh: 吸血鬼宅邸
+    card_type: roadside
+    default_unlocked: true
+    effects:
+      touching_road_combat_extra:
+        enemy: vampire
+        count: 1
+
+  - id: battlefield
+    name_zh: 戰場
+    card_type: roadside
+    default_unlocked: true
+    effects:
+      touching_road_loop_chest:
+        mimic_chance: 0.5
+
+  - id: road_lantern
+    name_zh: 路燈
+    card_type: roadside
+    default_unlocked: true
+    effects:
+      adjacent_road_enemy_cap_delta: -1
+
+  - id: goblin_camp
+    name_zh: 哥布林營地
+    card_type: roadside
+    default_unlocked: false
+    effects:
+      adjacent_road_daily_spawn:
+        enemy: goblin
+        max_per_tile: 3
+
+  - id: rock
+    name_zh: 岩石
+    card_type: landscape
+    default_unlocked: true
+    effects:
+      max_hp_percent: 1
+      touching_rock_mountain_bonus: 1
+
+  - id: mountain
+    name_zh: 山脈
+    card_type: landscape
+    default_unlocked: true
+    effects:
+      max_hp_percent: 2
+      touching_rock_mountain_bonus: 2
+
+  - id: meadow
+    name_zh: 草地
+    card_type: landscape
+    default_unlocked: true
+    effects:
+      daily_heal: 2
+
+  - id: blooming_meadow
+    name_zh: 花開草地
+    card_type: landscape
+    default_unlocked: false
+    effects:
+      daily_heal: 3
+
+  - id: forest
+    name_zh: 森林
+    card_type: landscape
+    unlock_building: smithy
+    effects:
+      attack_speed_percent: 1
+
+  - id: treasury
+    name_zh: 寶庫
+    card_type: special
+    unlock_building: supply_depot
+    effects:
+      adjacent_place_reward: random_resource
+
+  - id: empty_treasury
+    name_zh: 空寶庫
+    card_type: special
+    default_unlocked: false
+    effects:
+      spawn_every_days:
+        enemy: gargoyle
+        interval: 3
+        max_per_tile: 1
+
+  - id: mountain_peak
+    name_zh: 山峰
+    card_type: landscape
+    default_unlocked: false
+    effects:
+      max_hp_percent: 48
+      spawn_every_days:
+        enemy: harpy
+        interval: 2
+        target: nearest_road
+
+  - id: bandit_camp
+    name_zh: 強盜營地
+    card_type: roadside
+    default_unlocked: false
+    effects:
+      spawn_every_days:
+        enemy: bandit
+        interval: 2
+        max_per_tile: 2

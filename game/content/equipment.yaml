@@ -1,0 +1,94 @@
+equipment:
+  - id: rusty_sword
+    name_zh: 生鏽短劍
+    slot: weapon
+    rarity: common
+    bonuses:
+      damage: 8
+
+  - id: void_blade
+    name_zh: 虛空斬
+    slot: weapon
+    rarity: rare
+    bonuses:
+      damage: 6
+      attack_speed: 0.05
+
+  - id: memory_blade
+    name_zh: 記憶之刃
+    slot: weapon
+    rarity: epic
+    bonuses:
+      damage: 5
+      vampirism: 0.08
+      counterattack: 0.03
+
+  - id: cloth_armor
+    name_zh: 破布甲
+    slot: armor
+    rarity: common
+    bonuses:
+      max_hp: 20
+
+  - id: hide_vest
+    name_zh: 獸皮背心
+    slot: armor
+    rarity: rare
+    bonuses:
+      max_hp: 15
+      defense: 3
+
+  - id: guard_armor
+    name_zh: 守衛鎧
+    slot: armor
+    rarity: epic
+    bonuses:
+      max_hp: 12
+      defense: 5
+      evasion: 0.05
+
+  - id: wood_shield
+    name_zh: 木盾
+    slot: shield
+    rarity: common
+    bonuses:
+      defense: 5
+
+  - id: iron_shield
+    name_zh: 鐵盾
+    slot: shield
+    rarity: rare
+    bonuses:
+      defense: 4
+      counterattack: 0.05
+
+  - id: void_shield
+    name_zh: 虛空盾
+    slot: shield
+    rarity: epic
+    bonuses:
+      defense: 3
+      counterattack: 0.10
+      regen_per_sec: 2
+
+  - id: copper_ring
+    name_zh: 銅環
+    slot: ring
+    rarity: common
+    bonuses:
+      evasion: 0.03
+
+  - id: vamp_ring
+    name_zh: 吸血戒
+    slot: ring
+    rarity: rare
+    bonuses:
+      vampirism: 0.05
+
+  - id: swift_ring
+    name_zh: 迅捷戒
+    slot: ring
+    rarity: epic
+    bonuses:
+      attack_speed: 0.08
+      evasion: 0.03
