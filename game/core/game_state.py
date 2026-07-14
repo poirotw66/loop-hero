@@ -72,6 +72,11 @@ class GameState:
     first_heal_bonus_used: bool = False
     messages: list[str] = field(default_factory=list)
 
+    # Last expedition summary for result screen
+    last_kept_resources: Resources = field(default_factory=Resources)
+    last_retreat_rate: float = 0.0
+    last_died: bool = False
+
     @property
     def inventory_max(self) -> int:
         bonus = 0
@@ -197,6 +202,7 @@ class GameState:
             for enemy_id in enemy_ids:
                 if enemy_id == "void_warden":
                     self.boss_defeated_this_run = True
+                    self.messages.append("虛空守衛已擊敗！返回營火撤退可保存全部資源")
                 loot, equipment_id, card_id = roll_enemy_loot(self.content, enemy_id, self.rng)
                 self.run_resources.merge(loot)
                 if equipment_id:
@@ -251,6 +257,9 @@ class GameState:
         self.camp.deposit_run_resources(kept)
         if self.boss_defeated_this_run:
             self.camp.boss_defeated = True
+        self.last_kept_resources = kept
+        self.last_retreat_rate = rate
+        self.last_died = died
         self.phase = ExpeditionPhase.ENDED
         self.messages.append(f"遠征結束，保留 {int(rate * 100)}% 資源")
         return kept
