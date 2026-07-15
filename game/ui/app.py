@@ -162,10 +162,11 @@ class GameApp:
         self.screen_mode = "result"
 
     def _road_screen_pos(self, loop_index: int) -> tuple[int, int]:
+        from game.constants import ROAD_COORDS
+
         x, y = GRID_ORIGIN
-        positions = [(1, 0), (2, 0), (3, 0), (4, 0), (4, 1), (4, 2), (4, 3), (3, 3)]
-        ox, oy = positions[loop_index]
-        return (x + ox * CELL + CELL // 2, y + oy * CELL + CELL // 2)
+        row, col = ROAD_COORDS[loop_index]
+        return (x + col * CELL + CELL // 2, y + row * CELL + CELL // 2)
 
     def _grid_screen_pos(self, row: int, col: int) -> tuple[int, int]:
         x, y = GRID_ORIGIN
@@ -243,7 +244,7 @@ class GameApp:
         stats = self.state.hero_stats
         header = (
             f"HP {stats.hp:.0f}/{stats.max_hp:.0f}  DMG {stats.damage:.0f}  DEF {stats.defense:.0f}  "
-            f"Loop {self.state.loop_count}  Day {self.state.day_count}  Boss {self.state.boss_meter:.0f}/100"
+            f"Loop {self.state.loop_count}  Day {self.state.day_count}  Boss {self.state.boss_meter:.0f}/64"
         )
         self.screen.blit(self.font.render(header, True, COLORS["text"]), (20, 20))
         mode_zh = "規劃" if self.state.mode == GameMode.PLANNING else "冒險"

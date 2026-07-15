@@ -40,13 +40,20 @@ def roll_enemy_loot(content: ContentRegistry, enemy_id: str, rng: random.Random)
 
     equipment_id: str | None = None
     if rng.random() < loot.get("equipment_chance", 0.0):
-        pool = [item.id for item in content.equipment.values() if item.slot == "weapon"]
+        # Weight weapons higher so DPS keeps up with map danger.
+        weapons = [item.id for item in content.equipment.values() if item.slot == "weapon"]
+        others = [item.id for item in content.equipment.values() if item.slot != "weapon"]
+        pool = weapons * 2 + others
         if pool:
             equipment_id = rng.choice(pool)
 
     card_id: str | None = None
-    if rng.random() < loot.get("card_chance", 0.0):
-        card_id = rng.choice(["cemetery", "grove", "rock", "meadow"])
+    # Base card drop chance applies to every kill; enemy loot can raise it.
+    card_chance = max(0.25, float(loot.get("card_chance", 0.0)))
+    if rng.random() < card_chance:
+        card_id = rng.choice(
+            ["cemetery", "grove", "rock", "meadow", "mountain", "spider_cocoon", "battlefield"]
+        )
 
     return resources, equipment_id, card_id
 

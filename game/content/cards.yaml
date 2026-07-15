@@ -55,7 +55,7 @@ cards:
     effects:
       adjacent_road_daily_spawn:
         enemy: spider
-        max_per_tile: 2
+        max_per_tile: 1
 
   - id: vampire_mansion
     name_zh: 吸血鬼宅邸

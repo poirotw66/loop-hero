@@ -17,6 +17,7 @@ python main.py
 
 ```bash
 PYTHONPATH=. pytest tests/ -v
+PYTHONPATH=. python scripts/playtest.py
 ```
 
 ## 操作

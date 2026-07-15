@@ -1,10 +1,11 @@
 """Global tuning constants for MVP."""
 
-BOSS_METER_MAX = 100
+# Boss appears after ~8 placed cards (was 13 — unreachable with starter hand).
+BOSS_METER_MAX = 64
 BOSS_METER_PER_CARD = 8
-DAY_DURATION_TICKS = 120
-XP_PER_LEVEL = 100
-ENEMY_HP_SCALE_PER_LOOP = 1.02
+DAY_DURATION_TICKS = 100
+XP_PER_LEVEL = 80
+ENEMY_HP_SCALE_PER_LOOP = 1.015
 INVENTORY_MAX = 12
 MAP_SIZE = 7
 LOOP_LENGTH = 8
@@ -17,14 +18,15 @@ RETREAT_RATE_CAMP = 1.00
 RESOURCE_CHAIN = ["bone_dust", "hide", "herb", "metal"]
 RESOURCE_STACK_SIZE = 10
 
-# Road tile grid coordinates (row, col) for 7x7 map, clockwise from camp.
+# Closed clockwise loop (upper-left), leaving a 3x3 landscape zone for mountain peak.
+# Index 0 is camp. Must match UI road rendering.
 ROAD_COORDS: list[tuple[int, int]] = [
+    (1, 1),
     (1, 2),
     (1, 3),
-    (1, 4),
-    (1, 5),
-    (2, 5),
-    (3, 5),
-    (4, 5),
-    (4, 4),
+    (2, 3),
+    (3, 3),
+    (3, 2),
+    (3, 1),
+    (2, 1),
 ]

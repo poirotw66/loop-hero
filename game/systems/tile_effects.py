@@ -22,22 +22,25 @@ def on_new_day(state: "GameState") -> None:
 def on_loop_complete(state: "GameState") -> None:
     state.loop_count += 1
     if "skilled_armorer" in state.hero_traits:
+        state.loop_defense_bonus += 1
         state.hero_stats.defense += 1
     _battlefield_loop_rewards(state)
 
 
 def on_pass_road_tile(state: "GameState", loop_index: int) -> None:
     tile = state.map.road_tile_at(loop_index)
-    card = state.content.cards.get(tile.card_id)
-    if card is None:
-        return
 
-    if loop_index == 0:
-        heal = state.hero_stats.max_hp * 0.2
+    # Camp is a special loop anchor, not a content card.
+    if loop_index == 0 or tile.card_id == "camp":
+        heal = state.hero_stats.max_hp * 0.35
         state.hero_stats.hp = min(state.hero_stats.max_hp, state.hero_stats.hp + heal)
         if state.boss_pending:
             tile.spawned_enemies.append("void_warden")
             state.boss_pending = False
+        return
+
+    card = state.content.cards.get(tile.card_id)
+    if card is None:
         return
 
     effects = card.effects
@@ -81,13 +84,7 @@ def _road_daily_spawns(state: "GameState") -> None:
         if "spawn_every_days" in effects:
             spawn = effects["spawn_every_days"]
             if state.day_count % spawn["interval"] == 0:
-                if spawn.get("target") == "nearest_road":
-                    nearest = _nearest_road_index(state, tile)
-                    if nearest is not None:
-                        road_tile = state.map.road_tile_at(nearest)
-                        _append_spawn(road_tile, spawn["enemy"], spawn.get("max_per_tile", 99))
-                else:
-                    _append_spawn(tile, spawn["enemy"], spawn.get("max_per_tile", 99))
+                _append_spawn(tile, spawn["enemy"], spawn.get("max_per_tile", 99))
 
 
 def _grid_daily_spawns(state: "GameState") -> None:
@@ -99,7 +96,10 @@ def _grid_daily_spawns(state: "GameState") -> None:
         if "spawn_every_days" in effects:
             spawn = effects["spawn_every_days"]
             if state.day_count % spawn["interval"] == 0:
-                _append_spawn(tile, spawn["enemy"], spawn.get("max_per_tile", 99))
+                # Combat only happens on road tiles — always spawn there.
+                road_index = _nearest_road_index_to_pos(pos)
+                road_tile = state.map.road_tile_at(road_index)
+                _append_spawn(road_tile, spawn["enemy"], spawn.get("max_per_tile", 99))
         if "adjacent_road_daily_spawn" in effects:
             spawn = effects["adjacent_road_daily_spawn"]
             row, col = pos
@@ -110,7 +110,8 @@ def _grid_daily_spawns(state: "GameState") -> None:
 
 
 def _append_spawn(tile, enemy_id: str, max_count: int) -> None:
-    if len(tile.spawned_enemies) < max_count:
+    same = sum(1 for spawned in tile.spawned_enemies if spawned == enemy_id)
+    if same < max_count:
         tile.spawned_enemies.append(enemy_id)
 
 
@@ -119,6 +120,19 @@ def _nearest_road_index(state: "GameState", from_tile) -> int | None:
         if state.map.road_tile_at(index) is from_tile:
             return index
     return 0
+
+
+def _nearest_road_index_to_pos(pos: tuple[int, int]) -> int:
+    from game.core.map import manhattan
+
+    best_index = 0
+    best_distance = 10**9
+    for index in range(8):
+        distance = manhattan(pos, road_coord_for_index(index))
+        if distance < best_distance:
+            best_distance = distance
+            best_index = index
+    return best_index
 
 
 def _battlefield_loop_rewards(state: "GameState") -> None:
@@ -152,6 +166,8 @@ def recompute_passive_stats(state: "GameState") -> None:
         base.max_hp *= multiplier
         base.defense *= multiplier
 
+    base.defense += state.loop_defense_bonus
+
     for tile in list(state.map.grid.values()):
         card = state.content.cards.get(tile.card_id)
         if card is None:
@@ -160,6 +176,21 @@ def recompute_passive_stats(state: "GameState") -> None:
             base.max_hp *= 1 + card.effects["max_hp_percent"] / 100
         if "attack_speed_percent" in card.effects:
             base.attack_speed *= 1 + card.effects["attack_speed_percent"] / 100
+
+    # Touching rock/mountain bonus
+    for pos, tile in list(state.map.grid.items()):
+        card = state.content.cards.get(tile.card_id)
+        if card is None:
+            continue
+        bonus_per = card.effects.get("touching_rock_mountain_bonus")
+        if not bonus_per:
+            continue
+        from game.core.map import touching_cells
+
+        for neighbor in touching_cells(pos[0], pos[1]):
+            other = state.map.grid.get(neighbor)
+            if other and other.card_id in {"rock", "mountain", "mountain_peak"}:
+                base.max_hp *= 1 + bonus_per / 100
 
     hp_ratio = state.hero_stats.hp / max(state.hero_stats.max_hp, 1)
     base.hp = min(base.max_hp, base.max_hp * hp_ratio)

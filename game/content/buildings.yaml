@@ -8,8 +8,8 @@ buildings:
   - id: smithy
     name_zh: 鍛造鋪
     cost:
-      bone_dust: 15
-      metal: 5
+      bone_dust: 12
+      metal: 3
     unlocks_card: forest
     passive:
       equipment_bonus_percent: 0.05
@@ -17,8 +17,9 @@ buildings:
   - id: herbalist_hut
     name_zh: 草藥棚
     cost:
-      herb: 10
-      bone_dust: 10
+      herb: 6
+      hide: 8
+      bone_dust: 8
     unlocks_card: swamp
     passive:
       first_heal_bonus: 3
@@ -26,8 +27,8 @@ buildings:
   - id: gymnasium
     name_zh: 訓練場
     cost:
-      hide: 12
-      bone_dust: 8
+      hide: 10
+      bone_dust: 6
     unlocks_card: village
     passive:
       start_hp_bonus: 10
@@ -35,8 +36,8 @@ buildings:
   - id: supply_depot
     name_zh: 補給站
     cost:
-      metal: 8
-      hide: 10
+      metal: 5
+      hide: 8
     unlocks_card: treasury
     passive:
       inventory_bonus: 2
