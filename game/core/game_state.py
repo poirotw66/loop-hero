@@ -71,6 +71,7 @@ class GameState:
     dawn_attack_ready: bool = False
     first_heal_bonus_used: bool = False
     messages: list[str] = field(default_factory=list)
+    loop_defense_bonus: float = 0.0
 
     # Last expedition summary for result screen
     last_kept_resources: Resources = field(default_factory=Resources)
@@ -105,6 +106,7 @@ class GameState:
         self.hero_xp = 0
         self.hero_level = 1
         self.first_heal_bonus_used = False
+        self.loop_defense_bonus = 0.0
 
         start_hp_bonus = 0
         if "gymnasium" in self.camp.built_buildings:
@@ -116,6 +118,9 @@ class GameState:
         unlocked = self.camp.unlocked_cards(self.content)
         starter = ["cemetery", "grove", "spider_cocoon", "rock", "rock", "meadow"]
         self.hand = [card for card in starter if card in unlocked]
+        # Seed a starter weapon so first boss attempts are not naked DPS.
+        self.inventory.append(EquipmentItem(def_id="rusty_sword", slot="weapon"))
+        self.equip_item(0)
 
     def toggle_mode(self) -> None:
         if self.phase == ExpeditionPhase.COMBAT:
@@ -167,7 +172,9 @@ class GameState:
         if road_tile.spawned_enemies:
             enemies = list(road_tile.spawned_enemies)
             road_tile.spawned_enemies.clear()
-            self._start_combat(enemies)
+            enemies = self._apply_enemy_cap(enemies)
+            if enemies:
+                self._start_combat(enemies)
             return
 
         self.day_progress += delta
@@ -175,6 +182,23 @@ class GameState:
             self.day_progress = 0.0
             self.day_count += 1
             on_new_day(self)
+
+    def _apply_enemy_cap(self, enemies: list[str]) -> list[str]:
+        """Road lantern reduces max enemies on adjacent tiles (min 1)."""
+        from game.core.map import adjacent_cells, road_coord_for_index
+
+        cap_delta = 0
+        road_pos = road_coord_for_index(self.hero_loop_index)
+        for pos, tile in self.map.grid.items():
+            if tile.card_id != "road_lantern":
+                continue
+            if road_pos in adjacent_cells(pos[0], pos[1], include_diagonal=True):
+                card = self.content.cards["road_lantern"]
+                cap_delta += card.effects.get("adjacent_road_enemy_cap_delta", 0)
+        if not enemies:
+            return enemies
+        cap = max(1, len(enemies) + cap_delta)
+        return enemies[:cap]
 
     def _start_combat(self, enemy_ids: list[str]) -> None:
         self.phase = ExpeditionPhase.COMBAT

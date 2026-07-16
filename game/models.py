@@ -30,10 +30,10 @@ class ExpeditionPhase(str, Enum):
 class Stats:
     max_hp: float = 100.0
     hp: float = 100.0
-    damage: float = 10.0
-    defense: float = 5.0
+    damage: float = 12.0
+    defense: float = 6.0
     attack_speed: float = 1.0
-    evasion: float = 0.05
+    evasion: float = 0.08
     vampirism: float = 0.0
     counterattack: float = 0.0
     regen_per_sec: float = 0.0

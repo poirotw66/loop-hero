@@ -26,17 +26,18 @@ def test_cannot_place_on_camp(content: ContentRegistry) -> None:
 
 def test_landscape_requires_distance_from_road(content: ContentRegistry) -> None:
     game_map = GameMap()
-    assert can_place_card(content, game_map, "rock", grid_pos=(3, 3))
-    assert not can_place_card(content, game_map, "rock", grid_pos=(1, 2))
+    # Far corner is landscape; cell next to road is not.
+    assert can_place_card(content, game_map, "rock", grid_pos=(6, 6))
+    assert not can_place_card(content, game_map, "rock", grid_pos=(1, 1))
 
 
 def test_roadside_must_touch_road(content: ContentRegistry) -> None:
     game_map = GameMap()
-    assert can_place_card(content, game_map, "spider_cocoon", grid_pos=(1, 1))
-    assert not can_place_card(content, game_map, "spider_cocoon", grid_pos=(3, 3))
+    assert can_place_card(content, game_map, "spider_cocoon", grid_pos=(0, 1))
+    assert not can_place_card(content, game_map, "spider_cocoon", grid_pos=(6, 6))
 
 
 def test_placement_error_on_invalid(content: ContentRegistry) -> None:
     game_map = GameMap()
     with pytest.raises(PlacementError):
-        place_card(content, game_map, "rock", grid_pos=(1, 2))
+        place_card(content, game_map, "rock", grid_pos=(1, 1))
