@@ -27,3 +27,8 @@ PYTHONPATH=. python scripts/playtest.py
 - **裝備**：規劃模式下懸停背包可看屬性對比，點擊裝備
 - **快捷鍵**：空白鍵 暫停/繼續、R 撤退、Esc 取消選牌、Del 清檔
 - **營地**：點擊建築建造（解鎖新卡牌），進度自動存到 `save/camp.json`
+
+## 美術與音效
+
+- 像素 sprite：程序化產生（`game/ui/sprites.py`），`agent-sprite-forge` 就緒後可替換
+- 音效：合成 SFX（放牌、戰鬥、升級、Boss、勝利、死亡、建造）

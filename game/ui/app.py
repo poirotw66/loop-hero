@@ -12,6 +12,8 @@ from game.content.loader import ContentRegistry
 from game.core.game_state import GameState
 from game.models import CardType, ExpeditionPhase, GameMode
 from game.systems.placement import can_place_card
+from game.ui.sfx import SoundBank
+from game.ui.sprites import SpriteAtlas
 from game.ui.theme import CARD_COLORS, RARITY_COLORS, SLOT_LABELS
 
 COLORS = {
@@ -50,11 +52,14 @@ class GameApp:
         self.font_lg = pygame.font.SysFont(FONT_NAME, 24)
         self.content = ContentRegistry()
         self.state = GameState(content=self.content, camp=load_camp())
+        self.sprites = SpriteAtlas()
+        self.sfx = SoundBank()
         self.screen_mode = "menu"
         self.selected_card: str | None = None
         self.hovered_inventory: int | None = None
         self.result_text = ""
         self.combat_flash = 0.0
+        self._boss_warned = False
         self.save_status = "已載入存檔" if DEFAULT_SAVE_PATH.exists() else "新進度"
 
     def _persist(self) -> None:
@@ -79,13 +84,26 @@ class GameApp:
                     self._handle_click(event.pos)
 
             if self.screen_mode == "expedition":
+                if self.state.boss_pending and not self._boss_warned:
+                    self.sfx.play("boss")
+                    self._boss_warned = True
                 if self.state.phase == ExpeditionPhase.ENDED:
+                    if self.state.last_died:
+                        self.sfx.play("death")
+                    elif self.state.boss_defeated_this_run:
+                        self.sfx.play("victory")
+                    else:
+                        self.sfx.play("retreat")
                     self._persist()
                     self.screen_mode = "result"
                 elif self.state.mode == GameMode.ADVENTURE and self.state.phase == ExpeditionPhase.TRAVELING:
+                    before_log = len(self.state.combat_log)
                     self.state.tick(delta=dt * 30)
-                elif self.state.phase == ExpeditionPhase.COMBAT:
-                    self.combat_flash = 0.3
+                    if len(self.state.combat_log) > before_log:
+                        self.combat_flash = 0.25
+                        self.sfx.play("hit")
+                elif self.state.phase == ExpeditionPhase.LEVEL_UP:
+                    pass
 
             self._draw()
             pygame.display.flip()
@@ -126,13 +144,17 @@ class GameApp:
         if 380 <= pos[0] <= 640 and 260 <= pos[1] <= 310:
             self.state.start_expedition()
             self.selected_card = None
+            self._boss_warned = False
+            self.sfx.play("click")
             self.screen_mode = "expedition"
         elif 380 <= pos[0] <= 640 and 330 <= pos[1] <= 380:
+            self.sfx.play("click")
             self.screen_mode = "camp"
         elif 380 <= pos[0] <= 640 and 400 <= pos[1] <= 450:
             delete_save()
             self.state.camp = load_camp()
             self.save_status = "存檔已清除"
+            self.sfx.play("click")
 
     def _click_camp(self, pos: tuple[int, int]) -> None:
         if 40 <= pos[0] <= 160 and 620 <= pos[1] <= 660:
@@ -148,8 +170,10 @@ class GameApp:
                         card = self.content.cards[building.unlocks_card]
                         self.result_text += f"，解鎖 {card.name_zh}"
                     self._persist()
+                    self.sfx.play("build")
                 else:
                     self.result_text = "資源不足或已建造"
+                    self.sfx.play("click")
 
     def _click_result(self, pos: tuple[int, int]) -> None:
         if 380 <= pos[0] <= 640 and 520 <= pos[1] <= 570:
@@ -161,6 +185,7 @@ class GameApp:
                 x = 200 + index * 220
                 if x <= pos[0] <= x + 200 and 500 <= pos[1] <= 580:
                     self.state.choose_trait(self.state.pending_trait_choices[index])
+                    self.sfx.play("level_up")
             return
 
         if 20 <= pos[0] <= 140 and 620 <= pos[1] <= 660:
@@ -178,6 +203,7 @@ class GameApp:
         inv_index = self._inventory_index_at(pos)
         if inv_index is not None and self.state.mode == GameMode.PLANNING:
             self.state.equip_item(inv_index)
+            self.sfx.play("equip")
             return
 
         if self.selected_card and self.state.mode == GameMode.PLANNING:
@@ -186,6 +212,7 @@ class GameApp:
                 if pygame.Rect(x - 20, y - 20, 40, 40).collidepoint(pos):
                     if self.state.place_card_from_hand(self.selected_card, loop_index=loop_index):
                         self.selected_card = None
+                        self.sfx.play("place")
                     return
             for row in range(7):
                 for col in range(7):
@@ -193,11 +220,16 @@ class GameApp:
                     if pygame.Rect(x, y, CELL - 2, CELL - 2).collidepoint(pos):
                         if self.state.place_card_from_hand(self.selected_card, grid_pos=(row, col)):
                             self.selected_card = None
+                            self.sfx.play("place")
                         return
 
     def _retreat(self) -> None:
         at_camp = self.state.hero_loop_index == 0
         self.state.end_expedition(at_camp=at_camp)
+        if self.state.boss_defeated_this_run:
+            self.sfx.play("victory")
+        else:
+            self.sfx.play("retreat")
         self._persist()
         self.screen_mode = "result"
 
@@ -358,9 +390,8 @@ class GameApp:
             selected = card_id == self.selected_card
             color = COLORS["accent"] if selected else COLORS["grid"]
             pygame.draw.rect(self.screen, color, (25, y, 190, 28))
-            icon_color = CARD_COLORS.get(card_id, COLORS["dim"])
-            pygame.draw.rect(self.screen, icon_color, (28, y + 4, 20, 20))
             type_tag = {"road": "道", "roadside": "邊", "landscape": "貌", "special": "特"}.get(card.card_type.value, "?")
+            self.screen.blit(self.sprites.tile(card_id, 20), (28, y + 4))
             self.screen.blit(self.font.render(f"{card.name_zh} [{type_tag}]", True, COLORS["text"]), (54, y + 5))
 
     def _draw_map(self) -> None:
@@ -395,23 +426,30 @@ class GameApp:
             radius = 20 if loop_index == 0 else 16
             color = CARD_COLORS.get(card_id, COLORS["road"])
             pygame.draw.circle(self.screen, color, (x, y), radius)
+            sprite = self.sprites.tile(card_id if card_id != "wasteland" else "wasteland", 28 if loop_index else 32)
+            self.screen.blit(sprite, (x - sprite.get_width() // 2, y - sprite.get_height() // 2))
             if loop_index in legal_roads:
                 pygame.draw.circle(self.screen, COLORS["legal"], (x, y), radius + 4, 3)
             pygame.draw.circle(self.screen, COLORS["text"], (x, y), radius, 1)
             if loop_index == self.state.hero_loop_index:
-                pygame.draw.circle(self.screen, COLORS["hero"], (x, y), 7)
+                hero = self.sprites.hero(18)
+                self.screen.blit(hero, (x - 9, y - 9))
             if tile.spawned_enemies:
-                self.screen.blit(self.font_sm.render(str(len(tile.spawned_enemies)), True, COLORS["danger"]), (x + 10, y + 8))
+                enemy_id = tile.spawned_enemies[0]
+                enemy = self.sprites.enemy(enemy_id, 16)
+                self.screen.blit(enemy, (x + 6, y + 2))
+                if len(tile.spawned_enemies) > 1:
+                    self.screen.blit(
+                        self.font_sm.render(f"x{len(tile.spawned_enemies)}", True, COLORS["danger"]),
+                        (x + 10, y + 16),
+                    )
             label = self.content.cards.get(card_id)
             text = "營" if card_id == "camp" else (label.name_zh[:2] if label else "?")
             self.screen.blit(self.font_sm.render(text, True, COLORS["text"]), (x - 10, y - radius - 16))
 
     def _draw_tile_icon(self, x: int, y: int, size: int, card_id: str) -> None:
-        color = CARD_COLORS.get(card_id, COLORS["dim"])
-        pygame.draw.rect(self.screen, color, (x, y, size, size), border_radius=4)
-        name = self.content.cards.get(card_id)
-        if name:
-            self.screen.blit(self.font_sm.render(name.name_zh[:2], True, COLORS["text"]), (x + 4, y + size // 2 - 7))
+        sprite = self.sprites.tile(card_id, size)
+        self.screen.blit(sprite, (x, y))
 
     def _draw_equipment_panel(self) -> None:
         pygame.draw.rect(self.screen, COLORS["panel"], PANEL_EQUIP)
@@ -504,9 +542,12 @@ class GameApp:
         alpha = 140 if self.state.phase == ExpeditionPhase.COMBAT else int(self.combat_flash * 200)
         overlay.fill((80, 20, 20, min(alpha, 180)))
         self.screen.blit(overlay, (0, 0))
-        self.screen.blit(self.font_lg.render("戰鬥中", True, COLORS["danger"]), (460, 300))
-        for index, line in enumerate(self.state.combat_log[-5:]):
-            self.screen.blit(self.font.render(line, True, COLORS["text"]), (300, 350 + index * 26))
+        self.screen.blit(self.font_lg.render("戰鬥中", True, COLORS["danger"]), (460, 280))
+        self.screen.blit(self.sprites.hero(48), (380, 320))
+        # Show last fought enemies from road tile near hero if any remain in log context.
+        self.screen.blit(self.sprites.enemy("slime", 48), (560, 320))
+        for index, line in enumerate(self.state.combat_log[-4:]):
+            self.screen.blit(self.font.render(line, True, COLORS["text"]), (300, 390 + index * 26))
 
     def _draw_level_up_overlay(self) -> None:
         overlay = pygame.Surface((1024, 720), pygame.SRCALPHA)
