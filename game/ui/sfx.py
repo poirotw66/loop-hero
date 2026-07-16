@@ -68,6 +68,11 @@ class SoundBank:
         return self._sounds[name]
 
     def play(self, name: str) -> None:
+        if not self.enabled:
+            return
         sound = self._get(name)
         if sound is not None:
             sound.play()
+
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = enabled

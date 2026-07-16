@@ -6,12 +6,13 @@ import sys
 
 import pygame
 
-from game.camp.save import DEFAULT_SAVE_PATH, delete_save, load_camp, save_camp
+from game.camp.save import DEFAULT_SAVE_PATH, delete_save, load_game, save_game
 from game.constants import BOSS_METER_MAX
 from game.content.loader import ContentRegistry
 from game.core.game_state import GameState
 from game.models import CardType, ExpeditionPhase, GameMode
 from game.systems.placement import can_place_card
+from game.ui.settings import TUTORIAL_STEPS, Settings
 from game.ui.sfx import SoundBank
 from game.ui.sprites import SpriteAtlas
 from game.ui.theme import CARD_COLORS, RARITY_COLORS, SLOT_LABELS
@@ -44,26 +45,37 @@ FONT_NAME = None
 class GameApp:
     def __init__(self) -> None:
         pygame.init()
-        self.screen = pygame.display.set_mode((1024, 720))
+        self.content = ContentRegistry()
+        camp, settings = load_game()
+        self.settings = settings
+        self.screen = self._create_window()
         pygame.display.set_caption("Loop Hero MVP")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont(FONT_NAME, 18)
         self.font_sm = pygame.font.SysFont(FONT_NAME, 14)
         self.font_lg = pygame.font.SysFont(FONT_NAME, 24)
-        self.content = ContentRegistry()
-        self.state = GameState(content=self.content, camp=load_camp())
+        self.state = GameState(content=self.content, camp=camp)
         self.sprites = SpriteAtlas()
         self.sfx = SoundBank()
+        self.sfx.set_enabled(self.settings.sound_enabled)
         self.screen_mode = "menu"
         self.selected_card: str | None = None
         self.hovered_inventory: int | None = None
         self.result_text = ""
         self.combat_flash = 0.0
         self._boss_warned = False
+        self.tutorial_step = 0
         self.save_status = "已載入存檔" if DEFAULT_SAVE_PATH.exists() else "新進度"
 
+    def _create_window(self) -> pygame.Surface:
+        flags = pygame.FULLSCREEN if self.settings.fullscreen else 0
+        return pygame.display.set_mode((1024, 720), flags)
+
+    def _apply_display(self) -> None:
+        self.screen = self._create_window()
+
     def _persist(self) -> None:
-        save_camp(self.state.camp)
+        save_game(self.state.camp, self.settings)
         self.save_status = "進度已儲存"
 
     def run(self) -> None:
@@ -84,10 +96,12 @@ class GameApp:
                     self._handle_click(event.pos)
 
             if self.screen_mode == "expedition":
-                if self.state.boss_pending and not self._boss_warned:
+                if self._tutorial_active():
+                    pass
+                elif self.state.boss_pending and not self._boss_warned:
                     self.sfx.play("boss")
                     self._boss_warned = True
-                if self.state.phase == ExpeditionPhase.ENDED:
+                elif self.state.phase == ExpeditionPhase.ENDED:
                     if self.state.last_died:
                         self.sfx.play("death")
                     elif self.state.boss_defeated_this_run:
@@ -119,15 +133,28 @@ class GameApp:
 
     def _handle_key(self, key: int) -> None:
         if self.screen_mode == "expedition":
+            if self._tutorial_active():
+                if key in (pygame.K_SPACE, pygame.K_RETURN):
+                    self._advance_tutorial()
+                elif key == pygame.K_ESCAPE:
+                    self._skip_tutorial()
+                return
             if key == pygame.K_SPACE:
                 self.state.toggle_mode()
             elif key == pygame.K_r:
                 self._retreat()
             elif key == pygame.K_ESCAPE:
                 self.selected_card = None
+        elif self.screen_mode == "settings":
+            if key == pygame.K_ESCAPE:
+                self.screen_mode = "menu"
         elif self.screen_mode == "menu" and key == pygame.K_DELETE:
             delete_save()
-            self.state.camp = load_camp()
+            camp, settings = load_game()
+            self.state.camp = camp
+            self.settings = settings
+            self.sfx.set_enabled(self.settings.sound_enabled)
+            self._apply_display()
             self.save_status = "存檔已清除"
 
     def _handle_click(self, pos: tuple[int, int]) -> None:
@@ -135,26 +162,73 @@ class GameApp:
             self._click_menu(pos)
         elif self.screen_mode == "camp":
             self._click_camp(pos)
+        elif self.screen_mode == "settings":
+            self._click_settings(pos)
         elif self.screen_mode == "result":
             self._click_result(pos)
         elif self.screen_mode == "expedition":
             self._click_expedition(pos)
 
+    def _tutorial_active(self) -> bool:
+        return not self.settings.tutorial_done and self.screen_mode == "expedition"
+
+    def _advance_tutorial(self) -> None:
+        self.tutorial_step += 1
+        self.sfx.play("click")
+        if self.tutorial_step >= len(TUTORIAL_STEPS):
+            self.settings.tutorial_done = True
+            self._persist()
+
+    def _skip_tutorial(self) -> None:
+        self.settings.tutorial_done = True
+        self.tutorial_step = len(TUTORIAL_STEPS)
+        self.sfx.play("click")
+        self._persist()
+
     def _click_menu(self, pos: tuple[int, int]) -> None:
-        if 380 <= pos[0] <= 640 and 260 <= pos[1] <= 310:
+        if 380 <= pos[0] <= 640 and 230 <= pos[1] <= 280:
             self.state.start_expedition()
             self.selected_card = None
             self._boss_warned = False
+            self.tutorial_step = 0
             self.sfx.play("click")
             self.screen_mode = "expedition"
-        elif 380 <= pos[0] <= 640 and 330 <= pos[1] <= 380:
+        elif 380 <= pos[0] <= 640 and 300 <= pos[1] <= 350:
             self.sfx.play("click")
             self.screen_mode = "camp"
-        elif 380 <= pos[0] <= 640 and 400 <= pos[1] <= 450:
+        elif 380 <= pos[0] <= 640 and 370 <= pos[1] <= 420:
+            self.sfx.play("click")
+            self.screen_mode = "settings"
+        elif 380 <= pos[0] <= 640 and 440 <= pos[1] <= 490:
             delete_save()
-            self.state.camp = load_camp()
+            camp, settings = load_game()
+            self.state.camp = camp
+            self.settings = settings
+            self.sfx.set_enabled(True)
+            self._apply_display()
             self.save_status = "存檔已清除"
             self.sfx.play("click")
+
+    def _click_settings(self, pos: tuple[int, int]) -> None:
+        if 40 <= pos[0] <= 160 and 620 <= pos[1] <= 660:
+            self.screen_mode = "menu"
+            return
+        if 380 <= pos[0] <= 640 and 220 <= pos[1] <= 270:
+            self.settings.sound_enabled = not self.settings.sound_enabled
+            self.sfx.set_enabled(self.settings.sound_enabled)
+            self.sfx.play("click")
+            self._persist()
+        elif 380 <= pos[0] <= 640 and 300 <= pos[1] <= 350:
+            self.settings.fullscreen = not self.settings.fullscreen
+            self._apply_display()
+            self.sfx.play("click")
+            self._persist()
+        elif 380 <= pos[0] <= 640 and 380 <= pos[1] <= 430:
+            self.settings.tutorial_done = False
+            self.tutorial_step = 0
+            self.sfx.play("click")
+            self._persist()
+            self.result_text = "下次遠征將再次顯示教學"
 
     def _click_camp(self, pos: tuple[int, int]) -> None:
         if 40 <= pos[0] <= 160 and 620 <= pos[1] <= 660:
@@ -180,6 +254,17 @@ class GameApp:
             self.screen_mode = "menu"
 
     def _click_expedition(self, pos: tuple[int, int]) -> None:
+        if self._tutorial_active():
+            # Next button
+            if 360 <= pos[0] <= 500 and 480 <= pos[1] <= 530:
+                self._advance_tutorial()
+                return
+            # Skip button
+            if 520 <= pos[0] <= 660 and 480 <= pos[1] <= 530:
+                self._skip_tutorial()
+                return
+            return
+
         if self.state.phase == ExpeditionPhase.LEVEL_UP:
             for index in range(len(self.state.pending_trait_choices)):
                 x = 200 + index * 220
@@ -250,27 +335,68 @@ class GameApp:
             self._draw_menu()
         elif self.screen_mode == "camp":
             self._draw_camp()
+        elif self.screen_mode == "settings":
+            self._draw_settings()
         elif self.screen_mode == "result":
             self._draw_result()
         else:
             self._draw_expedition()
+            if self._tutorial_active():
+                self._draw_tutorial()
 
     def _draw_menu(self) -> None:
         title = self.font_lg.render("虛空邊境 — Loop Hero MVP", True, COLORS["accent"])
-        self.screen.blit(title, (280, 100))
-        self._draw_button(380, 260, 260, 50, "開始遠征")
-        self._draw_button(380, 330, 260, 50, "營地建設")
-        self._draw_button(380, 400, 260, 50, "清除存檔")
+        self.screen.blit(title, (280, 80))
+        self._draw_button(380, 230, 260, 50, "開始遠征")
+        self._draw_button(380, 300, 260, 50, "營地建設")
+        self._draw_button(380, 370, 260, 50, "設定")
+        self._draw_button(380, 440, 260, 50, "清除存檔")
         res = self.state.camp.resources
         res_line = f"營地資源：骨粉 {res.bone_dust}  獸皮 {res.hide}  草藥 {res.herb}  金屬 {res.metal}"
-        self.screen.blit(self.font.render(res_line, True, COLORS["dim"]), (240, 180))
+        self.screen.blit(self.font.render(res_line, True, COLORS["dim"]), (240, 160))
         built = len(self.state.camp.built_buildings)
-        self.screen.blit(self.font_sm.render(f"建築 {built}/5  |  {self.save_status}", True, COLORS["ok"]), (360, 210))
+        self.screen.blit(self.font_sm.render(f"建築 {built}/5  |  {self.save_status}", True, COLORS["ok"]), (360, 190))
         if self.state.camp.boss_defeated:
             win = self.font.render("★ 已擊敗虛空守衛 — 第二章裂隙已開啟…", True, COLORS["ok"])
-            self.screen.blit(win, (250, 480))
+            self.screen.blit(win, (250, 520))
+        if not self.settings.tutorial_done:
+            tip = self.font_sm.render("首次遠征將顯示教學引導", True, COLORS["accent"])
+            self.screen.blit(tip, (380, 560))
         hint = self.font_sm.render("空白鍵：暫停/繼續  |  R：撤退  |  Del：清檔", True, COLORS["dim"])
         self.screen.blit(hint, (300, 660))
+
+    def _draw_settings(self) -> None:
+        self.screen.blit(self.font_lg.render("設定", True, COLORS["accent"]), (40, 40))
+        sound_label = f"音效：{'開' if self.settings.sound_enabled else '關'}"
+        full_label = f"全螢幕：{'開' if self.settings.fullscreen else '關'}"
+        self._draw_button(380, 220, 260, 50, sound_label)
+        self._draw_button(380, 300, 260, 50, full_label)
+        self._draw_button(380, 380, 260, 50, "重播教學")
+        self.screen.blit(self.font_sm.render("設定會自動寫入存檔", True, COLORS["dim"]), (400, 460))
+        if self.result_text:
+            self.screen.blit(self.font.render(self.result_text, True, COLORS["accent"]), (320, 500))
+        self._draw_button(40, 620, 120, 40, "返回")
+
+    def _draw_tutorial(self) -> None:
+        if self.tutorial_step >= len(TUTORIAL_STEPS):
+            return
+        step = TUTORIAL_STEPS[self.tutorial_step]
+        overlay = pygame.Surface((1024, 720), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        self.screen.blit(overlay, (0, 0))
+        box = pygame.Rect(180, 180, 660, 280)
+        pygame.draw.rect(self.screen, COLORS["panel"], box)
+        pygame.draw.rect(self.screen, COLORS["accent"], box, 2)
+        progress = f"教學 {self.tutorial_step + 1}/{len(TUTORIAL_STEPS)}"
+        self.screen.blit(self.font_sm.render(progress, True, COLORS["dim"]), (200, 195))
+        self.screen.blit(self.font_lg.render(step["title"], True, COLORS["accent"]), (200, 225))
+        # Word-wrap body roughly by characters.
+        body = step["body"]
+        lines = [body[i : i + 28] for i in range(0, len(body), 28)]
+        for index, line in enumerate(lines[:4]):
+            self.screen.blit(self.font.render(line, True, COLORS["text"]), (200, 280 + index * 28))
+        self._draw_button(360, 480, 140, 50, "下一步")
+        self._draw_button(520, 480, 140, 50, "跳過")
 
     def _draw_camp(self) -> None:
         self.screen.blit(self.font_lg.render("營地", True, COLORS["accent"]), (40, 40))
