@@ -121,3 +121,29 @@ enemies:
       shield_amount: 25
     loot:
       metal: 10
+
+  - id: scorch_worm
+    name_zh: 焦土蟲
+    hp: 48
+    damage: 9
+    defense: 4
+    attack_speed: 0.95
+    loot:
+      metal: 1
+      bone_dust: 1
+
+  - id: memory_rift
+    name_zh: 記憶裂隙
+    hp: 280
+    damage: 13
+    defense: 6
+    attack_speed: 0.95
+    is_boss: true
+    special:
+      void_pulse_interval: 3
+      void_pulse_damage: 9
+      shield_threshold: 0.35
+      shield_amount: 35
+    loot:
+      metal: 14
+      herb: 4

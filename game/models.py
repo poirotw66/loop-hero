@@ -111,6 +111,17 @@ class ComboDef:
 
 
 @dataclass
+class ChapterDef:
+    id: str
+    name_zh: str
+    boss_id: str
+    enemy_hp_scale: float = 1.015
+    boss_meter_max: float = 64.0
+    starter_extra_cards: list[str] = field(default_factory=list)
+    unlock_requires_boss: bool | None = None
+
+
+@dataclass
 class PlacedTile:
     card_id: str
     variant: str | None = None

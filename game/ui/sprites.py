@@ -1,12 +1,39 @@
-"""Procedural pixel sprites (agent-sprite-forge is empty — generate in-engine)."""
+"""Sprite atlas: prefer generated PNGs, fall back to procedural pixels."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pygame
 
 from game.ui.theme import CARD_COLORS, ENEMY_COLORS
 
-# ponytail: hand-tuned 16x16 patterns; swap for real art when forge is ready
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets" / "sprites"
+
+# Rare fallbacks only — most content IDs now have dedicated PNGs.
+ASSET_ALIASES: dict[str, str] = {}
+
+
+def _load_asset(name: str, size: int) -> pygame.Surface | None:
+    path = ASSETS_DIR / f"{name}.png"
+    if not path.exists():
+        alias = ASSET_ALIASES.get(name)
+        if alias:
+            path = ASSETS_DIR / f"{alias}.png"
+    if not path.exists():
+        return None
+    image = pygame.image.load(str(path))
+    try:
+        image = image.convert_alpha()
+    except pygame.error:
+        # Headless tests may not have a display mode yet.
+        image = image.convert()
+    if image.get_size() != (size, size):
+        image = pygame.transform.smoothscale(image, (size, size))
+    return image
+
+
+# ponytail: ASCII patterns remain as fallback for missing asset IDs
 
 
 def _px(size: int, pixels: list[str], palette: dict[str, tuple[int, int, int]]) -> pygame.Surface:
@@ -465,7 +492,7 @@ def make_enemy_sprite(enemy_id: str, size: int = 28) -> pygame.Surface:
 
 
 class SpriteAtlas:
-    """Lazy-cached procedural sprites."""
+    """Lazy-cached sprites: generated PNG first, procedural fallback."""
 
     def __init__(self) -> None:
         self._tiles: dict[tuple[str, int], pygame.Surface] = {}
@@ -475,16 +502,25 @@ class SpriteAtlas:
     def tile(self, card_id: str, size: int = 40) -> pygame.Surface:
         key = (card_id, size)
         if key not in self._tiles:
-            self._tiles[key] = make_tile_sprite(card_id, size)
+            asset = _load_asset(card_id, size)
+            self._tiles[key] = asset if asset is not None else make_tile_sprite(card_id, size)
         return self._tiles[key]
 
     def enemy(self, enemy_id: str, size: int = 28) -> pygame.Surface:
         key = (enemy_id, size)
         if key not in self._enemies:
-            self._enemies[key] = make_enemy_sprite(enemy_id, size)
+            asset = _load_asset(enemy_id, size)
+            self._enemies[key] = asset if asset is not None else make_enemy_sprite(enemy_id, size)
         return self._enemies[key]
 
     def hero(self, size: int = 24) -> pygame.Surface:
         if size not in self._hero:
-            self._hero[size] = make_hero_sprite(size)
+            asset = _load_asset("hero", size)
+            self._hero[size] = asset if asset is not None else make_hero_sprite(size)
         return self._hero[size]
+
+    def has_asset(self, name: str) -> bool:
+        if (ASSETS_DIR / f"{name}.png").exists():
+            return True
+        alias = ASSET_ALIASES.get(name)
+        return bool(alias and (ASSETS_DIR / f"{alias}.png").exists())

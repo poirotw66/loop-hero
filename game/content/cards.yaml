@@ -164,3 +164,58 @@ cards:
         enemy: bandit
         interval: 2
         max_per_tile: 2
+
+  - id: oblivion
+    name_zh: 遺忘
+    card_type: special
+    unlock_building: intel_archive
+    effects:
+      remove_tile: true
+      boss_meter_delta: -16
+
+  - id: ruins
+    name_zh: 遺跡
+    card_type: road
+    unlock_building: supply_depot
+    effects:
+      spawn_every_days:
+        enemy: scorch_worm
+        interval: 2
+        max_per_tile: 1
+      pass_resource: metal
+
+  - id: thicket
+    name_zh: 密林
+    card_type: landscape
+    unlock_building: smithy
+    effects:
+      attack_speed_percent: 2
+
+  - id: desert
+    name_zh: 沙漠
+    card_type: landscape
+    unlock_building: intel_archive
+    effects:
+      max_hp_percent: -0.5
+      enemy_max_hp_percent: -0.5
+
+  - id: beacon
+    name_zh: 燈塔
+    card_type: special
+    unlock_building: intel_archive
+    effects:
+      attack_speed_percent: 8
+
+  - id: chrono_crystal
+    name_zh: 時空結晶
+    card_type: roadside
+    unlock_building: intel_archive
+    effects:
+      adjacent_day_multiplier: 2
+
+  - id: watch_post
+    name_zh: 哨站
+    card_type: roadside
+    unlock_building: gymnasium
+    effects:
+      adjacent_road_enemy_cap_delta: -1

@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 
 from game.camp.meta import CampState
 from game.constants import (
-    BOSS_METER_MAX,
     BOSS_METER_PER_CARD,
     CAMP_LOOP_INDEX,
     DAY_DURATION_TICKS,
@@ -21,6 +20,7 @@ from game.content.loader import ContentRegistry
 from game.core.combat import Combatant, run_combat
 from game.core.map import GameMap
 from game.models import (
+    ChapterDef,
     EquipmentItem,
     ExpeditionPhase,
     GameMode,
@@ -42,6 +42,7 @@ class GameState:
     mode: GameMode = GameMode.PLANNING
     phase: ExpeditionPhase = ExpeditionPhase.TRAVELING
     map: GameMap = field(default_factory=GameMap)
+    chapter_id: str = "chapter_1"
 
     loop_count: int = 0
     day_count: int = 1
@@ -67,6 +68,8 @@ class GameState:
     boss_defeated_this_run: bool = False
 
     combat_log: list[str] = field(default_factory=list)
+    last_combat_enemies: list[str] = field(default_factory=list)
+    last_place_pos: tuple[int, int] | None = None
     pending_trait_choices: list[str] = field(default_factory=list)
     dawn_attack_ready: bool = False
     first_heal_bonus_used: bool = False
@@ -79,13 +82,25 @@ class GameState:
     last_died: bool = False
 
     @property
+    def chapter(self) -> ChapterDef:
+        return self.content.chapters.get(self.chapter_id, self.content.chapters["chapter_1"])
+
+    @property
+    def boss_meter_max(self) -> float:
+        return self.chapter.boss_meter_max
+
+    @property
     def inventory_max(self) -> int:
         bonus = 0
         if "supply_depot" in self.camp.built_buildings:
             bonus = 2
         return INVENTORY_MAX + bonus
 
-    def start_expedition(self) -> None:
+    def start_expedition(self, chapter_id: str | None = None) -> None:
+        if chapter_id is not None:
+            if not self.camp.chapter_unlocked(self.content, chapter_id):
+                chapter_id = "chapter_1"
+            self.chapter_id = chapter_id
         self.mode = GameMode.PLANNING
         self.phase = ExpeditionPhase.TRAVELING
         self.map = GameMap()
@@ -99,6 +114,8 @@ class GameState:
         self.boss_pending = False
         self.boss_defeated_this_run = False
         self.combat_log = []
+        self.last_combat_enemies = []
+        self.last_place_pos = None
         self.pending_trait_choices = []
         self.inventory = []
         self.equipped = {"weapon": None, "armor": None, "shield": None, "ring": None}
@@ -118,6 +135,9 @@ class GameState:
         unlocked = self.camp.unlocked_cards(self.content)
         starter = ["cemetery", "grove", "spider_cocoon", "rock", "rock", "meadow"]
         self.hand = [card for card in starter if card in unlocked]
+        for card_id in self.chapter.starter_extra_cards:
+            if card_id in self.content.cards:
+                self.hand.append(card_id)
         # Seed a starter weapon so first boss attempts are not naked DPS.
         self.inventory.append(EquipmentItem(def_id="rusty_sword", slot="weapon"))
         self.equip_item(0)
@@ -136,17 +156,22 @@ class GameState:
         if card_id not in self.hand:
             return False
         try:
-            place_card(self.content, self.map, card_id, loop_index=loop_index, grid_pos=grid_pos)
+            placed_at = place_card(self.content, self.map, card_id, loop_index=loop_index, grid_pos=grid_pos)
         except Exception:
             return False
         self.hand.remove(card_id)
-        self.boss_meter = min(BOSS_METER_MAX, self.boss_meter + BOSS_METER_PER_CARD)
-        if self.boss_meter >= BOSS_METER_MAX:
+        self.last_place_pos = placed_at
+        card = self.content.cards.get(card_id)
+        meter_max = self.boss_meter_max
+        if card and "boss_meter_delta" in card.effects:
+            self.boss_meter = max(0.0, min(meter_max, self.boss_meter + card.effects["boss_meter_delta"]))
+        else:
+            self.boss_meter = min(meter_max, self.boss_meter + BOSS_METER_PER_CARD)
+        if self.boss_meter >= meter_max:
             self.boss_pending = True
         combos = resolve_combos(self.content, self.map)
         if combos:
             self.messages.extend(combos)
-        card = self.content.cards.get(card_id)
         if card and card.effects.get("adjacent_place_reward") == "random_resource":
             resource = self.rng.choice(["bone_dust", "hide", "herb", "metal"])
             self.run_resources.add(resource, 1)
@@ -184,21 +209,34 @@ class GameState:
             on_new_day(self)
 
     def _apply_enemy_cap(self, enemies: list[str]) -> list[str]:
-        """Road lantern reduces max enemies on adjacent tiles (min 1)."""
+        """Road lantern / watch_post reduce max enemies on adjacent tiles (min 1)."""
         from game.core.map import adjacent_cells, road_coord_for_index
 
         cap_delta = 0
         road_pos = road_coord_for_index(self.hero_loop_index)
         for pos, tile in self.map.grid.items():
-            if tile.card_id != "road_lantern":
+            card = self.content.cards.get(tile.card_id)
+            if card is None:
+                continue
+            delta = card.effects.get("adjacent_road_enemy_cap_delta")
+            if not delta:
                 continue
             if road_pos in adjacent_cells(pos[0], pos[1], include_diagonal=True):
-                card = self.content.cards["road_lantern"]
-                cap_delta += card.effects.get("adjacent_road_enemy_cap_delta", 0)
+                cap_delta += delta
         if not enemies:
             return enemies
         cap = max(1, len(enemies) + cap_delta)
         return enemies[:cap]
+
+    def _enemy_hp_multiplier(self) -> float:
+        multiplier = 1.0
+        for tile in self.map.grid.values():
+            card = self.content.cards.get(tile.card_id)
+            if card is None:
+                continue
+            if "enemy_max_hp_percent" in card.effects:
+                multiplier *= 1 + card.effects["enemy_max_hp_percent"] / 100
+        return multiplier
 
     def _start_combat(self, enemy_ids: list[str]) -> None:
         self.phase = ExpeditionPhase.COMBAT
@@ -212,6 +250,7 @@ class GameState:
                 if road_pos in touching_cells(pos[0], pos[1]):
                     extra.append("vampire")
         enemy_ids = enemy_ids + extra
+        self.last_combat_enemies = list(enemy_ids)
         result = run_combat(
             self.content,
             hero,
@@ -219,14 +258,17 @@ class GameState:
             self.rng,
             self.loop_count,
             self.hero_traits,
+            hp_scale=self.chapter.enemy_hp_scale,
+            enemy_hp_multiplier=self._enemy_hp_multiplier(),
         )
         self.hero_stats.hp = hero.stats.hp
         self.combat_log = result.log[-6:]
         if result.victory:
             for enemy_id in enemy_ids:
-                if enemy_id == "void_warden":
+                enemy_def = self.content.enemies.get(enemy_id)
+                if enemy_def and enemy_def.is_boss:
                     self.boss_defeated_this_run = True
-                    self.messages.append("虛空守衛已擊敗！返回營火撤退可保存全部資源")
+                    self.messages.append(f"{enemy_def.name_zh}已擊敗！返回營火撤退可保存全部資源")
                 loot, equipment_id, card_id = roll_enemy_loot(self.content, enemy_id, self.rng)
                 self.run_resources.merge(loot)
                 if equipment_id:

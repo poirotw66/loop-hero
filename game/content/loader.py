@@ -10,6 +10,7 @@ from game.models import (
     BuildingDef,
     CardDef,
     CardType,
+    ChapterDef,
     ComboDef,
     EnemyDef,
     EquipmentDef,
@@ -117,6 +118,23 @@ def load_combos() -> list[ComboDef]:
     ]
 
 
+def load_chapters() -> dict[str, ChapterDef]:
+    raw = _load_yaml("chapters.yaml")["chapters"]
+    result: dict[str, ChapterDef] = {}
+    for item in raw:
+        chapter = ChapterDef(
+            id=item["id"],
+            name_zh=item["name_zh"],
+            boss_id=item["boss_id"],
+            enemy_hp_scale=item.get("enemy_hp_scale", 1.015),
+            boss_meter_max=float(item.get("boss_meter_max", 64)),
+            starter_extra_cards=list(item.get("starter_extra_cards", [])),
+            unlock_requires_boss=item.get("unlock_requires_boss"),
+        )
+        result[chapter.id] = chapter
+    return result
+
+
 class ContentRegistry:
     """In-memory registry of all loaded content."""
 
@@ -127,3 +145,4 @@ class ContentRegistry:
         self.traits = load_traits()
         self.buildings = load_buildings()
         self.combos = load_combos()
+        self.chapters = load_chapters()

@@ -1,0 +1,16 @@
+chapters:
+  - id: chapter_1
+    name_zh: 虛空邊境
+    boss_id: void_warden
+    enemy_hp_scale: 1.015
+    boss_meter_max: 64
+    starter_extra_cards: []
+    unlock_requires_boss: null
+
+  - id: chapter_2
+    name_zh: 記憶深處
+    boss_id: memory_rift
+    enemy_hp_scale: 1.03
+    boss_meter_max: 72
+    starter_extra_cards: [oblivion, thicket]
+    unlock_requires_boss: true

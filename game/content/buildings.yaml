@@ -41,3 +41,13 @@ buildings:
     unlocks_card: treasury
     passive:
       inventory_bonus: 2
+
+  - id: intel_archive
+    name_zh: 記憶檔案館
+    cost:
+      metal: 8
+      herb: 8
+      bone_dust: 10
+    unlocks_card: oblivion
+    passive:
+      unlock_chapter_tools: true
