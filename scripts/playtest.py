@@ -39,6 +39,20 @@ def _try_place_any(state: GameState, rng: random.Random) -> bool:
     card_id = state.hand[0]
     card = state.content.cards[card_id]
 
+    if card.effects.get("remove_tile"):
+        indices = list(range(1, 8))
+        rng.shuffle(indices)
+        for loop_index in indices:
+            if state.place_card_from_hand(card_id, loop_index=loop_index):
+                return True
+        positions = list(state.map.grid.keys())
+        rng.shuffle(positions)
+        for pos in positions:
+            if state.place_card_from_hand(card_id, grid_pos=pos):
+                return True
+        state.hand.pop(0)
+        return False
+
     if card.card_type == CardType.ROAD:
         indices = list(range(1, 8))
         rng.shuffle(indices)
@@ -179,7 +193,7 @@ def simulate_run(
             and state.hero_stats.hp < state.hero_stats.max_hp * 0.3
             and state.hero_loop_index == 0
             and not state.boss_pending
-            and state.boss_meter < 64
+            and state.boss_meter < state.boss_meter_max
         ):
             state.end_expedition(at_camp=True)
             notes.append("retreated_low_hp")

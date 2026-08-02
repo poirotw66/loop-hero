@@ -25,8 +25,19 @@ class CampState:
             building = content.buildings.get(building_id)
             if building and building.unlocks_card:
                 unlocked.add(building.unlocks_card)
+            for card_id, card in content.cards.items():
+                if card.unlock_building == building_id:
+                    unlocked.add(card_id)
         unlocked.update({"wasteland", "camp", "blooming_meadow", "empty_treasury", "mountain_peak", "bandit_camp", "goblin_camp"})
         return unlocked
+
+    def chapter_unlocked(self, content: ContentRegistry, chapter_id: str) -> bool:
+        chapter = content.chapters.get(chapter_id)
+        if chapter is None:
+            return False
+        if chapter.unlock_requires_boss:
+            return self.boss_defeated
+        return True
 
     def can_build(self, content: ContentRegistry, building_id: str) -> bool:
         if building_id in self.built_buildings:

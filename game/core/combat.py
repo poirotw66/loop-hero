@@ -37,9 +37,14 @@ def run_combat(
     rng: random.Random,
     loop_count: int,
     trait_ids: list[str],
+    *,
+    hp_scale: float = 1.02,
+    enemy_hp_multiplier: float = 1.0,
 ) -> CombatResult:
-    enemies = [_spawn_enemy(content, enemy_id, loop_count) for enemy_id in enemy_ids]
-    combatants = [hero] + enemies
+    enemies = [
+        _spawn_enemy(content, enemy_id, loop_count, hp_scale=hp_scale, enemy_hp_multiplier=enemy_hp_multiplier)
+        for enemy_id in enemy_ids
+    ]
     log: list[str] = []
     dawn_bonus = "blade_of_dawn" in trait_ids
     hero_dawn_ready = dawn_bonus
@@ -67,18 +72,12 @@ def run_combat(
                 break
 
         for enemy in enemies:
-            if enemy.enemy_id != "void_warden" or enemy.stats.hp <= 0:
+            if enemy.stats.hp <= 0 or not enemy.enemy_id:
                 continue
-            enemy.boss_turns += 1
-            special = content.enemies["void_warden"].special
-            if enemy.boss_turns % special["void_pulse_interval"] == 0:
-                hero.stats.hp -= special["void_pulse_damage"]
-                log.append("虛空守衛發動虛空震盪！")
-            threshold = enemy.stats.max_hp * special["shield_threshold"]
-            if not enemy.boss_shield_used and enemy.stats.hp <= threshold:
-                enemy.shield = special["shield_amount"]
-                enemy.boss_shield_used = True
-                log.append("虛空守衛展開護盾！")
+            definition = content.enemies.get(enemy.enemy_id)
+            if definition is None or not definition.is_boss:
+                continue
+            _tick_boss_special(enemy, hero, definition.special, log)
 
         if tick > 5000:
             log.append("戰鬥超時")
@@ -88,9 +87,31 @@ def run_combat(
     return CombatResult(victory=victory, log=log)
 
 
-def _spawn_enemy(content: ContentRegistry, enemy_id: str, loop_count: int) -> Combatant:
+def _tick_boss_special(enemy: Combatant, hero: Combatant, special: dict, log: list[str]) -> None:
+    enemy.boss_turns += 1
+    interval = special.get("void_pulse_interval")
+    if interval and enemy.boss_turns % interval == 0:
+        hero.stats.hp -= special.get("void_pulse_damage", 0)
+        log.append(f"{enemy.name}發動虛空震盪！")
+    threshold_ratio = special.get("shield_threshold")
+    if threshold_ratio is None or enemy.boss_shield_used:
+        return
+    if enemy.stats.hp <= enemy.stats.max_hp * threshold_ratio:
+        enemy.shield = special.get("shield_amount", 0)
+        enemy.boss_shield_used = True
+        log.append(f"{enemy.name}展開護盾！")
+
+
+def _spawn_enemy(
+    content: ContentRegistry,
+    enemy_id: str,
+    loop_count: int,
+    *,
+    hp_scale: float = 1.02,
+    enemy_hp_multiplier: float = 1.0,
+) -> Combatant:
     definition = content.enemies[enemy_id]
-    scale = 1.02 ** max(0, loop_count - 1)
+    scale = (hp_scale ** max(0, loop_count - 1)) * enemy_hp_multiplier
     stats = Stats(
         max_hp=definition.hp * scale,
         hp=definition.hp * scale,

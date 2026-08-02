@@ -23,6 +23,13 @@ CARD_COLORS: dict[str, tuple[int, int, int]] = {
     "empty_treasury": (150, 130, 40),
     "mountain_peak": (180, 180, 200),
     "bandit_camp": (130, 70, 50),
+    "oblivion": (40, 20, 55),
+    "ruins": (120, 95, 70),
+    "thicket": (25, 70, 35),
+    "desert": (190, 160, 90),
+    "beacon": (230, 200, 120),
+    "chrono_crystal": (80, 180, 210),
+    "watch_post": (150, 120, 70),
 }
 
 ENEMY_COLORS: dict[str, tuple[int, int, int]] = {
@@ -38,6 +45,8 @@ ENEMY_COLORS: dict[str, tuple[int, int, int]] = {
     "bandit": (130, 90, 60),
     "mimic": (160, 120, 50),
     "void_warden": (80, 60, 160),
+    "scorch_worm": (200, 110, 50),
+    "memory_rift": (120, 70, 180),
 }
 
 RARITY_COLORS: dict[str, tuple[int, int, int]] = {

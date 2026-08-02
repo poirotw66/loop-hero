@@ -15,6 +15,7 @@ def on_new_day(state: "GameState") -> None:
     _landscape_daily_heal(state)
     _road_daily_spawns(state)
     _grid_daily_spawns(state)
+    _chrono_crystal_extra_spawns(state)
     if "blade_of_dawn" in state.hero_traits:
         state.dawn_attack_ready = True
 
@@ -35,7 +36,7 @@ def on_pass_road_tile(state: "GameState", loop_index: int) -> None:
         heal = state.hero_stats.max_hp * 0.35
         state.hero_stats.hp = min(state.hero_stats.max_hp, state.hero_stats.hp + heal)
         if state.boss_pending:
-            tile.spawned_enemies.append("void_warden")
+            tile.spawned_enemies.append(state.chapter.boss_id)
             state.boss_pending = False
         return
 
@@ -50,6 +51,9 @@ def on_pass_road_tile(state: "GameState", loop_index: int) -> None:
 
     if effects.get("invert_healing"):
         state.hero_stats.hp = max(0, state.hero_stats.hp - 5)
+
+    if "pass_resource" in effects:
+        state.run_resources.add(effects["pass_resource"], 1)
 
 
 def _landscape_daily_heal(state: "GameState") -> None:
@@ -133,6 +137,35 @@ def _nearest_road_index_to_pos(pos: tuple[int, int]) -> int:
             best_distance = distance
             best_index = index
     return best_index
+
+
+def _chrono_crystal_extra_spawns(state: "GameState") -> None:
+    """Adjacent roads near chrono crystals get an extra daily spawn pass."""
+    for pos, tile in state.map.grid.items():
+        card = state.content.cards.get(tile.card_id)
+        if card is None:
+            continue
+        multiplier = card.effects.get("adjacent_day_multiplier", 1)
+        if multiplier <= 1:
+            continue
+        row, col = pos
+        for _ in range(int(multiplier) - 1):
+            for road_index, road_pos in enumerate([road_coord_for_index(i) for i in range(8)]):
+                if road_pos not in adjacent_cells(row, col, include_diagonal=True):
+                    continue
+                road_tile = state.map.road_tile_at(road_index)
+                road_card = state.content.cards.get(road_tile.card_id)
+                if road_card is None:
+                    continue
+                effects = road_card.effects
+                if "daily_spawn" in effects:
+                    spawn = effects["daily_spawn"]
+                    if state.rng.random() < spawn.get("chance", 0):
+                        _append_spawn(road_tile, spawn["enemy"], spawn.get("max_per_tile", 99))
+                if "spawn_every_days" in effects:
+                    spawn = effects["spawn_every_days"]
+                    if state.day_count % spawn["interval"] == 0:
+                        _append_spawn(road_tile, spawn["enemy"], spawn.get("max_per_tile", 99))
 
 
 def _battlefield_loop_rewards(state: "GameState") -> None:
