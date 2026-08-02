@@ -32,5 +32,6 @@ PYTHONPATH=. python scripts/playtest.py
 
 ## 美術與音效
 
-- 像素 sprite：程序化產生（`game/ui/sprites.py`）
+- 生成美術：`game/assets/sprites/`（AI 生成後縮成 64×64 PNG）
+- 載入優先用 PNG，缺圖時回退程序化像素（`game/ui/sprites.py`）
 - 音效：合成 SFX（可在設定關閉）
