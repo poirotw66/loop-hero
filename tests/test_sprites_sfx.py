@@ -56,6 +56,18 @@ def test_sprite_atlas_loads_generated_assets() -> None:
     assert atlas.enemy("slime", 28).get_size() == (28, 28)
 
 
+def test_all_content_ids_have_sprite_assets() -> None:
+    from game.content.loader import ContentRegistry
+
+    content = ContentRegistry()
+    atlas = SpriteAtlas()
+    missing_cards = [card_id for card_id in content.cards if not atlas.has_asset(card_id)]
+    missing_enemies = [enemy_id for enemy_id in content.enemies if not atlas.has_asset(enemy_id)]
+    assert missing_cards == []
+    assert missing_enemies == []
+    assert atlas.has_asset("hero")
+
+
 def test_tone_and_soundbank_play() -> None:
     sound = _tone(440, 0.05, volume=0.1)
     assert sound.get_length() > 0

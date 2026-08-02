@@ -10,17 +10,8 @@ from game.ui.theme import CARD_COLORS, ENEMY_COLORS
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets" / "sprites"
 
-# Aliases when a dedicated PNG is missing.
-ASSET_ALIASES: dict[str, str] = {
-    "empty_treasury": "treasury",
-    "wasteland": "rock",
-    "spider_cocoon": "spider",
-    "vampire_mansion": "vampire",
-    "goblin_camp": "wolf",
-    "bandit_camp": "wolf",
-    "battlefield": "cemetery",
-    "road_lantern": "camp",
-}
+# Rare fallbacks only — most content IDs now have dedicated PNGs.
+ASSET_ALIASES: dict[str, str] = {}
 
 
 def _load_asset(name: str, size: int) -> pygame.Surface | None:
